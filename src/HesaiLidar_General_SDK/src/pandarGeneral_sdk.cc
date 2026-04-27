@@ -161,10 +161,12 @@ void PandarGeneralSDK::GetCalibrationFromDevice() {
     fin.seekg(0, std::ios::end);
     length = fin.tellg();
     fin.seekg(0, std::ios::beg);
-    char *buffer = new char[length];
+    char *buffer = new char[length + 1];
     fin.read(buffer, length);
+    buffer[length] = '\0';
     fin.close();
     strlidarCalibration = buffer;
+    delete[] buffer;
     ret = pandarGeneral_->LoadCorrectionFile(strlidarCalibration);
     if (ret != 0) {
       std::cout << "Load correction file from " << correction_file_path_ <<" failed" << std::endl;
