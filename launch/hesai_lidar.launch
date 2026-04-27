@@ -10,7 +10,7 @@
 	<arg name="frame_id" default="PandarXT-32"/>
 	<arg name="pcldata_type" default="0"/>
 	<arg name="publish_type" default="points"/>
-	<arg name="timestamp_type" default=""/>
+	<arg name="timestamp_type" default="realtime"/>
 	<arg name="data_type" default=""/>
 	<arg name="namespace" default="hesai"/>
 	<arg name="lidar_correction_file"  default="$(find hesai_lidar)/config/PandarXT-32.csv"/>
