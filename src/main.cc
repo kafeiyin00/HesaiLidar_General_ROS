@@ -32,6 +32,7 @@ public:
     bool coordinateCorrectionFlag;
     string targetFrame;
     string fixedFrame;
+    double timestampOffset;
 
     nh.getParam("pcap_file", pcapFile);
     nh.getParam("server_ip", serverIp);
@@ -49,6 +50,8 @@ public:
     nh.getParam("coordinate_correction_flag", coordinateCorrectionFlag);
     nh.getParam("target_frame", targetFrame);
     nh.getParam("fixed_frame", fixedFrame);
+    nh.param("timestamp_offset", timestampOffset, 0.0);
+    m_dTimestampOffset = timestampOffset;
   
     if(!pcapFile.empty()){
       hsdk = new PandarGeneralSDK(pcapFile, boost::bind(&HesaiLidarClient::lidarCallback, this, _1, _2, _3), \
@@ -104,7 +107,13 @@ public:
 
   void lidarCallback(boost::shared_ptr<PPointCloud> cld, double timestamp, hesai_lidar::PandarScanPtr scan) // the timestamp from first point cloud of cld
   {
+    timestamp += m_dTimestampOffset;
     if(m_sPublishType == "both" || m_sPublishType == "points"){
+      if (m_dTimestampOffset != 0.0) {
+        for (auto &point : cld->points) {
+          point.timestamp += m_dTimestampOffset;
+        }
+      }
       pcl_conversions::toPCL(ros::Time(timestamp), cld->header.stamp);
       sensor_msgs::PointCloud2 output;
       pcl::toROSMsg(*cld, output);
@@ -139,6 +148,7 @@ private:
   PandarGeneralSDK* hsdk;
   string m_sPublishType;
   string m_sTimestampType;
+  double m_dTimestampOffset;
   ros::Subscriber packetSubscriber;
 };
 

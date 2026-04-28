@@ -80,6 +80,82 @@ Data source will be from rosbag when "pcap_file" is set to empty and "data_type"
 Make sure the parameter "publish_type" is set to "points"
 Make sure the parameter "namespace" in file hesai_lidar.launch is same with the namespace in rosbag
 
+## PTP time synchronization
+
+When the PC needs to provide PTP time to the Hesai LiDAR, configure the PC as the PTP Grandmaster and synchronize the NIC PHC with the system clock. Keep `timestamp_type` empty so the driver uses the LiDAR packet timestamp instead of the PC packet receive time.
+
+Create a script, for example `start_hesai_ptp.sh`, and update `IFACE` to the network interface connected to the LiDAR:
+
+```bash
+#!/bin/bash
+set -e
+
+IFACE="enp3s0"
+
+echo "[1/2] Starting ptp4l: PC as PTP Grandmaster..."
+sudo pkill -f "ptp4l.*${IFACE}" || true
+sudo pkill -f "phc2sys.*${IFACE}" || true
+
+sudo phc_ctl ${IFACE} -- set cmp > /tmp/phc_ctl_hesai.log 2>&1
+sudo ptp4l -i ${IFACE} -m > /tmp/ptp4l_hesai.log 2>&1 &
+sleep 2
+
+echo "[2/2] Syncing system clock to NIC PHC..."
+sudo phc2sys -s CLOCK_REALTIME -c ${IFACE} -w -m > /tmp/phc2sys_hesai.log 2>&1 &
+sleep 30
+
+echo "Started."
+echo "phc_ctl log: tail -f /tmp/phc_ctl_hesai.log"
+echo "ptp4l log:    tail -f /tmp/ptp4l_hesai.log"
+echo "phc2sys log: tail -f /tmp/phc2sys_hesai.log"
+```
+
+Run the script before starting the LiDAR driver:
+
+```bash
+$ chmod +x start_hesai_ptp.sh
+$ ./start_hesai_ptp.sh
+```
+
+For this workspace, `start.sh` already starts PTP before `hesai_lidar`:
+
+```bash
+HESAI_PTP_IFACE="${HESAI_PTP_IFACE:-enp3s0}"
+HESAI_PTP_SETTLE_SEC="${HESAI_PTP_SETTLE_SEC:-30}"
+```
+
+### Timestamp offset for ROS
+
+With PTP enabled, the Hesai packet timestamp can be in the PTP/TAI time scale, while ROS bag time and most ROS sensors use UTC system time. In the checked bags, `/hesai/pandar.header.stamp` was stable at about `+36.89s` compared with rosbag record time, which matches the current TAI-UTC offset of about `37s`.
+
+To keep the LiDAR hardware timestamp and avoid the receive-time delay from `timestamp_type:=realtime`, use:
+
+```bash
+roslaunch hesai_lidar hesai_lidar.launch timestamp_offset:=-37.0
+```
+
+The launch file exposes:
+
+```xml
+<arg name="timestamp_type" default=""/>
+<arg name="timestamp_offset" default="0.0"/>
+```
+
+In this workspace, `start.sh` starts the driver with:
+
+```bash
+roslaunch hesai_lidar hesai_lidar.launch \
+    timestamp_offset:=-37.0
+```
+
+After recording a bag, verify the LiDAR header timestamp against the rosbag record time:
+
+```bash
+$ rostopic echo -p -b your.bag /hesai/pandar/header | head
+```
+
+The first column is rosbag record time and `field.stamp` is the LiDAR message header time. After the `-37.0s` offset, they should be close.
+
 ## Run as independent node
 
 1. Make sure current path in the `rosworkspace` directory
@@ -158,4 +234,3 @@ $ roslaunch hesai_lidar cloud_nodelet.launch lidar_type:="PandarXTM" frame_id:="
 |lidar_correction_file|Path of calibration file, will be used when not able to get calibration file from a connected Liar|
 |multicast_ip|The multicast IP address of connected Lidar, will be used to get udp packets from multicast ip address|
 |coordinate_correction_flag|default "false":Disable coordinate correction "true":Enable coordinate correction|
-
