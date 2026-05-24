@@ -19,7 +19,6 @@ find_package(catkin REQUIRED COMPONENTS
     roslib
     std_msgs
     sensor_msgs
-    message_runtime
     image_transport
     pcl_conversions
     message_generation
@@ -35,7 +34,7 @@ generate_messages(
   std_msgs
 )
 catkin_package(
-    CATKIN_DEPENDS message_runtime
+    CATKIN_DEPENDS roscpp roslib std_msgs sensor_msgs message_runtime image_transport pcl_conversions tf
 )
 
 ###PandarGeneralRaw
@@ -45,6 +44,7 @@ add_library(PandarGeneral
     src/HesaiLidar_General_SDK/src/PandarGeneralRaw/src/pcap_reader.cpp
     src/HesaiLidar_General_SDK/src/PandarGeneralRaw/src/pandarGeneral.cc
 )
+add_dependencies(PandarGeneral ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_include_directories(PandarGeneral PRIVATE
     src/HesaiLidar_General_SDK/src/PandarGeneralRaw/include
     src/HesaiLidar_General_SDK/src/PandarGeneralRaw/
@@ -65,6 +65,7 @@ add_library(PandarGeneralSDK SHARED
     src/HesaiLidar_General_SDK/src/tcp_command_client.c
     src/HesaiLidar_General_SDK/src/util.c
 )
+add_dependencies(PandarGeneralSDK ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_include_directories(PandarGeneralSDK PRIVATE
     src/HesaiLidar_General_SDK/
     src/HesaiLidar_General_SDK/include/
@@ -89,6 +90,7 @@ target_link_libraries(PandarGeneralSDK
 add_executable(hesai_lidar_node
     src/main.cc
 )
+add_dependencies(hesai_lidar_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 target_include_directories(hesai_lidar_node PRIVATE
     src/HesaiLidar_General_SDK/include
@@ -105,6 +107,7 @@ target_link_libraries(hesai_lidar_node
 )
 
 add_library(cloud_nodelet src/cloud_nodelet.cc)
+add_dependencies(cloud_nodelet ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 target_include_directories(cloud_nodelet PRIVATE
     src/HesaiLidar_General_SDK/include
